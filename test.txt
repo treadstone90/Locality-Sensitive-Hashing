@@ -1,0 +1,5 @@
+Hi my name is Karthik
+Hi what is your name ?
+I'm not adding the capitalization of word for now
+I should make sure that I make case independent
+THis is just a test file to make sure that the shingles are working

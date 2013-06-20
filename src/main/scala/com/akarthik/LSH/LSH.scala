@@ -5,11 +5,24 @@ import scala.Option
 import scala.Some
 import scala.None
 
+/** A Locality Sensitive Hash that hashes the documents into buckets
+  *
+  *@constructor : create a new instance.s
+   @param : shingleLength. Default value  = 3, 
+   @param : minHashLengh. The default value is = 100
+   @param : numberBands. The Default valeu is 10.
+   @param : processedDocuments - which is a Tuple of (document , documennt - index) The processed documents may normalize the document by having just 
+   one space between words and converting all characters to lower case.
+   @param : threshold The default value for threshold is 0.8. 
+   
+   The parameters numberBands, threshold may be may be set so that threshold is aprroximately equal to  (1/numberBands)^(1/rows per band).
+ **/
+
 class LSH(shingleLength: Int = 3,
   minHashLength: Int = 100,
-  numberBands: Int,
+  numberBands: Int=10,
   processedDocuments: IndexedSeq[(String, Int)],
-  threshold: Double) {
+  threshold: Double=0.8) {
 
   val randomHashFunctions = randomLinearHashFunction(minHashLength);
 
@@ -29,6 +42,7 @@ class LSH(shingleLength: Int = 3,
     slope.zip(const).take(minHashLength);
   }
 
+
   def findCandidates(shingles: Set[String]) = {
     val minHash = getMinHash(shingles);
 
@@ -43,11 +57,24 @@ class LSH(shingleLength: Int = 3,
     candidates
   }
 
+/** Returns documents that have Jaccard Similarity greater than threshold Assumes that a documents
+   have already been hashed 
+  @tparam : document . The document for which similar documents have to be identified
+**/
+
   def findSimilar(document: String) = {
-    val shingles = document.toList.sliding(shingleLength).map(_.mkString).toSet;
+    val shingles = document.toList.sliding(shingleLength)
+    .map(_.mkString)
+    .map(shingle => shingle.toLowerCase)
+    .toSet;
+
     val candidates = findCandidates(shingles);
     candidates.filter(candidate => JaccardSimilarity(shingles, documentShingles(candidate.toInt)) > threshold)
   }
+
+/** Returns the Min Hash of a document 
+  *@tparam : The shingle representation for that document
+**/
 
   def getMinHash(shingles: Set[String]) = {
 
@@ -72,6 +99,10 @@ class LSH(shingleLength: Int = 3,
 
   }
 
+/** Partition the min-hash into  numberBands bands  
+  @tparam : The shingle represenatation of the document
+**/
+
   def partitionArray(minHash: Array[Double]): IndexedSeq[Array[Double]] = {
 
     if (minHash.length < numberBands) {
@@ -79,7 +110,6 @@ class LSH(shingleLength: Int = 3,
       System.exit(0);
     }
 
-    // first assume they are proper multiples
     val elementsPerBand = (minHash.length / numberBands);
     (0 to numberBands - 1).map { bandIndex =>
       val start = bandIndex * elementsPerBand
@@ -87,6 +117,8 @@ class LSH(shingleLength: Int = 3,
       minHash.slice(start, end);
     }
   }
+
+ /** Creates a locality sensitive hash for the all the processed documents **/
 
   def createHash() = {
 
@@ -108,13 +140,15 @@ class LSH(shingleLength: Int = 3,
 
 }
 
+/** Represents one band of the Locality Sensitive Hash **/
+
 class Band() {
   import scala.collection.mutable.ArrayBuffer
 
   val buckets = scala.collection.mutable.Map[List[Double], ArrayBuffer[Int]]()
 
+/** Hashes the sub- array into buckets **/
   def hash(subArray: (Int, Array[Double])) {
-
     buckets.get(subArray._2.toList) match {
       case Some(value: ArrayBuffer[Int]) => value += subArray._1;
       case None => buckets(subArray._2.toList) = ArrayBuffer(subArray._1)
@@ -122,6 +156,7 @@ class Band() {
 
   }
 
+/** Returns the documents that collide to the same bucket **/
   def getCollisionObjects(subArray: Array[Double]): Option[List[Int]] = {
     buckets.get(subArray.toList) match {
       case Some(value: ArrayBuffer[Int]) => Some(value.toList);
@@ -130,6 +165,8 @@ class Band() {
   }
 
 }
+
+/** Computes the Jaccrd Similarity of two sets**/
 
 object JaccardSimilarity {
   def apply(set1: Set[String], set2: Set[String]): Double = {

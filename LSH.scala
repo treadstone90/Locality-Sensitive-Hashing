@@ -10,7 +10,7 @@ object findSimilar {
     val documents = Source.fromFile("test.txt").getLines.toIndexedSeq.zipWithIndex
     val lsh = new LSH(3, 100, 5, documents, 0.2);
     lsh.createHash
-    println(lsh.findSimilar("hi my name is kaaveea"))
+    println(lsh.findSimilar("The fox jumped over the red cat."))
   }
 }
 
